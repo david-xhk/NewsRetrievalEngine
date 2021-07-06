@@ -21,14 +21,12 @@ for idx, row in df.iterrows():
   if len(row['content']) < 100:
     break
   else:
-    #t = TextBlob(row['content'])
-    #if t.detect_language() == 'en':
     if detect(row['content']) == 'en':
       filtered.append(row)
 
 filtered_df = pd.DataFrame(filtered, columns=df.columns)
 
-# Pick a row from every 5 rows
+# Pick a row from every x rows
 hop = int(len(filtered_df) / CORPUS_SIZE)
 
 output = filtered_df.iloc[::hop, :]
