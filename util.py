@@ -4,7 +4,7 @@ import pandas as pd
 from doctypes import Document
 
 
-def clean_words(words: list[str]) -> list[str]:
+def clean_words(words: str) -> list[str]:
     stemmer = nltk.stem.PorterStemmer()
     stopwords = set(nltk.corpus.stopwords.words('english'))
     punctuation = set(string.punctuation)
