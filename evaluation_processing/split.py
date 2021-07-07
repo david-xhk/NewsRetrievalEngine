@@ -14,21 +14,18 @@ else:
 CORPUS_SIZE = 10_000
 filtered = []
 
-# Filter df to remove entries where content is not available (e.g. "Sign in to access data")
-# Filter df to remove non-english
-
+# Filtering process
 for idx, row in df.iterrows():
-  if len(row['content']) < 100:
+  if len(row['content']) < 100: # remove paywall block e.g. "please sign in"
     break
   else:
-    if detect(row['content']) == 'en':
+    if detect(row['content']) == 'en': # check if language is english
       filtered.append(row)
 
 filtered_df = pd.DataFrame(filtered, columns=df.columns)
 
-# Pick a row from every x rows
-hop = int(len(filtered_df) / CORPUS_SIZE)
+# Reduce to corupus size
+filtered_df = filtered_df.sample(n=CORPUS_SIZE)
 
-output = filtered_df.iloc[::hop, :]
-
-output.to_csv('filtered_data.csv')
+# Export to csv
+filtered_df.to_csv('filtered_data.csv', index=False)
