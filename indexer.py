@@ -1,38 +1,20 @@
-import nltk
-import string
 from doctypes import Document, TokenizedDocument
-
-stemmer = nltk.stem.PorterStemmer()
-stopwords = set(nltk.corpus.stopwords.words('english'))
-punctuation = set(string.punctuation)
+from util import clean_words
 
 
-def clean_(words: list[str]) -> list[str]:
-    words_ = []
-    for word in nltk.tokenize.word_tokenize(words):
-        # removes non-ascii characters
-        word = word.encode('ascii', 'ignore').decode()
-        if (word and not all(letter in punctuation for letter in word)):
-            word = word.lower()
-            if word not in stopwords:
-                word = stemmer.stem(word)
-                words_.append(word)
-    return words_
-
-
-def preprocess_(docs: list[Document]) -> list[TokenizedDocument]:
+def preprocess_docs(docs: list[Document]) -> list[TokenizedDocument]:
     docs_ = []
     for doc in docs:
         doc_ = TokenizedDocument(
             id=doc.id,
-            title=clean_(doc.title),
-            content=clean_(doc.content))
+            title=clean_words(doc.title),
+            content=clean_words(doc.content))
         docs_.append(doc_)
     return docs_
 
 
-def words_(docs: list[TokenizedDocument]) -> list[str]:
-    """Return a list of unique words across all documents."""
+def get_words(docs: list[TokenizedDocument]) -> list[str]:
+    """Return a list of unique words across the documents."""
     words = []
     for doc in docs:
         for word in doc.title:
@@ -59,21 +41,21 @@ def invert_(docs: list[TokenizedDocument],
 
 
 def main(docs: list[Document]) -> list:
-    docs = preprocess_(docs)
-    words = words_(docs)
+    docs = preprocess_docs(docs)
+    words = get_words(docs)
     wtoi = {w: i for i, w in enumerate(words)}
     for doc in docs:
         for i, w in enumerate(doc.title):
             doc.title[i] = wtoi[w]
         for i, w in enumerate(doc.content):
             doc.content[i] = wtoi[w]
-    docs_map = {doc.id: doc.to_dict() for doc in docs}
     index = invert_(docs, words, wtoi)
-    return [docs_map, words, wtoi, index]
+    docs = [doc.to_dict() for doc in docs]
+    return [docs, words, wtoi, index]
 
 
 def test_main():
-    input = [
+    input_ = [
         Document(
             id=0, title='breakthrough drug for schizophrenia',
             content=''),
@@ -95,7 +77,7 @@ def test_main():
         'patient': [3],
         'schizophrenia': [0, 1, 2, 3],
         'treatment': [2]}
-    output = main(input)[-1]
+    output = main(input_)[-1]
     assert output == expected, 'expected ' + \
         str(expected) + ' from main but got ' + str(output)
 
