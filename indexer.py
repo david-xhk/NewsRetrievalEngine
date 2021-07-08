@@ -25,9 +25,10 @@ def get_words(docs: list[TokenizedDocument]) -> list[str]:
     return sorted(words)
 
 
-def invert_(docs: list[TokenizedDocument],
-            words: list[str],
-            wtoi: dict[str, int]) -> dict[str, list[int]]:
+def create_inverted_index(
+        docs: list[TokenizedDocument],
+        words: list[str],
+        wtoi: dict[str, int]) -> dict[str, list[int]]:
     """Return the inverted index for all words in the documents."""
     index = {}
     for word in words:
@@ -49,7 +50,7 @@ def main(docs: list[Document]) -> list:
             doc.title[i] = wtoi[w]
         for i, w in enumerate(doc.content):
             doc.content[i] = wtoi[w]
-    index = invert_(docs, words, wtoi)
+    index = create_inverted_index(docs, words, wtoi)
     docs = [doc.to_dict() for doc in docs]
     return [docs, words, wtoi, index]
 
@@ -87,7 +88,8 @@ test_main()
 if __name__ == '__main__':
     import argparse
     import json
-    from util import read_docs
+    import time
+    from util import read_docs, get_docs_size
 
     parser = argparse.ArgumentParser(
         description='Generate an inverted index',
@@ -99,5 +101,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     docs = read_docs(args.docs_path, args.docs_type)
+    docs_size = get_docs_size(args.docs_path, args.docs_type)
+    print(f"read {args.docs_path} with {len(docs)} rows @ {docs_size/1e6:.1f}MB")
+
+    print("start indexing...")
+    start = time.time()
+    output = main(docs)
+    end = time.time()
+    time_taken = end - start
+    speed = docs_size / 1e3 / time_taken
+    time_taken = f"{time_taken // 60:.0f}m{time_taken % 60:.0f}s"
+    print(f"indexing completed in {time_taken} ({speed:.1f}KB/s)")
+
     with open(args.out_path, 'w') as fp:
-        json.dump(main(docs), fp)
+        json.dump(output, fp)
