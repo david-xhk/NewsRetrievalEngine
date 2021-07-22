@@ -1,8 +1,61 @@
 from time import time_ns
 from doctypes import Document
-from ranker import calculate_bm25
+from ranker import calculate_bm25, calculate_specific_bm25
 from util import clean_words, get_doc
 import json
+
+class BM25Engine():
+    def __init__(self, index_path) -> None:
+        self.index_path = index_path
+        self.items = None
+        self._load_data()
+
+    def _load_data(self):
+        # Load the stored indexer output
+        with open(self.index_path, 'r') as fp:
+            [docs, words, wtoi, index] = json.load(fp)
+        docs = [Document.from_dict(doc) for doc in docs]
+        self.words = words
+        self.wtoi = wtoi
+        self.index = index
+        self.docs_map = {doc.id: doc for doc in docs}
+
+    def _query_processing(self, query):
+        # Clean query
+        query = [word for word in clean_words(query) if word in self.words]
+        if not query:
+            return []
+        
+        # Use the inverted index to retrieve the ids of all documents that contain
+        # a word in the query
+        docs_ = list(set(docid for word in query for docid in self.index[word]))
+
+        # Get the tokenized documents with the ids
+        for i, docid in enumerate(docs_):
+            docs_[i] = self.docs_map[docid]
+        
+        # Convert query to word indices
+        query = [self.wtoi[word] for word in query]
+        return query, docs_
+
+    
+    def get_topk(self, query: str, topk: int):
+        query, docs_ = self._query_processing(query)
+
+        # Call the BM25 algorithm and return the results
+        results = calculate_bm25(query, docs_, topk)
+
+        # Select docid
+        if results:
+            results = [docid for (docid, _) in results]
+
+        return results
+    
+    def calculate_query_doc(self, document_id: int, query):
+        query, docs_ = self._query_processing(query)
+
+        return calculate_specific_bm25(query, document_id, docs_)
+
 
 
 def search(query: str, topk: int, index_path: str) -> list[int]:
@@ -75,4 +128,3 @@ def test_search():
     print(f"in {n} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s")
 
 
-test_search()

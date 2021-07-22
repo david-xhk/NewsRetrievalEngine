@@ -56,7 +56,7 @@ def test_calculate_df():
         expected) + ' from calculate_df but got ' + str(output)
 
 
-test_calculate_df()
+#test_calculate_df()
 
 
 def calculate_idf(df: dict[int, int], corpus_size: int) -> dict[int, float]:
@@ -86,7 +86,7 @@ def test_calculate_idf():
         expected) + ' from calculate_idf but got ' + str(output)
 
 
-test_calculate_idf()
+#test_calculate_idf()
 
 
 def calculate_bm25(
@@ -129,6 +129,30 @@ def calculate_bm25(
 
     rank = sorted(rsv.items(), key=lambda kv: kv[1], reverse=True)
     return rank[:topk]
+
+def calculate_specific_bm25(query, document_id, docs, k1: float = 1.2,
+        b: float = 0.75):
+    N = len(docs)
+    L_ave = sum(len(doc.title + doc.content)
+                for doc in docs) / N
+    df = calculate_df(docs)
+    idf = calculate_idf(df, N)
+    docs = [doc for doc in docs if doc.id == document_id]
+    if not docs: return 0
+    doc = docs[0]
+    
+    L_d = len(doc.title + doc.content)
+    rsv_d = 0.0
+    tf_d = calculate_tf(doc)
+    for i in query:
+        if i not in tf_d:
+            continue
+        idf_t = idf[i]
+        tf_td = tf_d[i]
+        rsv_td = idf_t * (((k1 + 1) * tf_td) /
+                            ((k1 * ((1 - b) + b * (L_d / L_ave)) + tf_td)))
+        rsv_d += rsv_td
+    return rsv_d
 
 
 def test_calculate_bm25():
