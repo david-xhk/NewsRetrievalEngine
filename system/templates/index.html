@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>News Retrieval Engine</title>
+    <link rel="icon" href="https://image.flaticon.com/icons/png/512/1074/1074106.png">
+    
     <link
       rel="stylesheet"
       href="{{ url_for('static',filename='style.css') }}"
@@ -12,19 +14,24 @@
   </head>
   <body>
     <form method="POST" onsubmit="search()">
-      <input type="text" id="name" name="query" placeholder="Search for the news..." />
+      <input
+        type="text"
+        id="name"
+        name="query"
+        placeholder="Search for the news..."
+      />
       <button onclick="search()">Search</button>
     </form>
     {% for article in articles %}
     <div class="article">
       <div class="article_header">
-        <h2>{{ article.title }}</h2>
+        <a href="{{ article.link }}"><h2>{{ article.title }}</h2></a>
         <p>{{ article.date }}</p>
       </div>
       <p class="article_source">{{ article.source}}</p>
       <p class="article_content">{{ article.content }}</p>
     </div>
-    {% endfor %}-->
+    {% endfor %}
   </body>
   <script>
     function search() {
