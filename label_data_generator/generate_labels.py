@@ -30,9 +30,9 @@ def generate_query(title: str) -> str:
   
 # Loop through each document, generate a query based on title, pick 4 random others
 # Calculate the BM25 between query and each of the 5 documents
-# Store in queries dictionary
-queries = {} # {"hello": {123453: 1.23, 234234: 12.23}, "bye bye" ...}
-
+# Store in queries dictionary, calculate threshold
+# Add to queries_document
+queries_document = {} # {"query query query...": {relevant: [234324, 2343]. irrelevant: [23908, 230943]}...}
 for index, doc in df.iterrows():
   scores = {}
   # Generate query from title
@@ -41,26 +41,20 @@ for index, doc in df.iterrows():
 
   # Pick n random documents 
   random_doc_df = df.sample(n=4)
-  ls = random_doc_df['ID'].to_list()
-  for i in ls:
-    scores[i] = engine.calculate_query_doc(i, query)
-  queries[query] = scores
+  for doc_id in random_doc_df['ID'].to_list():
+    scores[doc_id] = engine.calculate_query_doc(doc_id, query)
 
+  # Calculate threshold
+  threshold = np.percentile(list(scores.values()), 80)
 
-# Get 90th percentile of BM25 scores
-relevance_scores = [score for score_dict in queries.values() for score in score_dict.values()]
-relevance_scores = sorted(relevance_scores, reverse=True)
-threshold = np.percentile(relevance_scores, 80)
-
-# Filter out which is relevant and which isnt, and store in new dictionary
-queries_document = {} # {'query': {relevant: [], irrelevant: []}}
-for query, documents in queries.items():
+  # Add to document list
   queries_document[query] = {'relevant': [], 'irrelevant': []}
-  for k,v in documents.items():
-    if v > threshold:
-      queries_document[query]['relevant'].append(k)
+  for document_id, relevance_score in scores.items():
+    if relevance_score > threshold:
+      queries_document[query]['relevant'].append(document_id)
     else:
-      queries_document[query]['irrelevant'].append(k)
+      queries_document[query]['irrelevant'].append(document_id)
+
 
 with open("labelled_data.json", "w") as fp:
   json.dump(queries_document, fp)
