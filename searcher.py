@@ -1,3 +1,4 @@
+from __future__ import annotations
 from doctypes import Document, LanguageModel
 from ranker import calculate_bm25, calculate_interpolated_sentence_probability
 from util import clean_words, get_doc
@@ -41,8 +42,8 @@ def bm25_search(
     # Convert query to word ids
     query = [word_ids[word] for word in query]
 
-    # Call the BM25 algorithm and return the results
-    return calculate_bm25(query, hits, topk)
+    # Call the BM25 algorithm and return the top k results
+    return calculate_bm25(query, hits)[:topk]
 
 
 def test_bm25_search():
@@ -52,7 +53,7 @@ def test_bm25_search():
     total_ms = 0
     for i, expected, query in test_data.itertuples():
         print(f'{i+1:2}. {query=}, {expected=}')
-        input_ = (query, 3, 'test_index.json')
+        input_ = (query, 3, 'test_data_out.json')
         start = time.time()
         output = bm25_search(*input_)
         end = time.time()
@@ -72,9 +73,9 @@ def test_bm25_search():
 
 def qlm_search(
     query: str,
-    topk: int,
     data_path: str,
-    alpha: int = 0.75,
+    topk: int | None = None,
+    alpha: float = 0.75,
     normalize: bool = False,
 ) -> list[tuple[int, int]]:
     """Return the top k document ids and scores using QLM (Query Likelihood Model).
@@ -119,7 +120,7 @@ def test_qlm_search():
     total_ms = 0
     for i, expected, query in test_data.itertuples():
         print(f'{i+1:2}. {query=}, {expected=}')
-        input_ = (query, 3, 'test_index.json', 0.15, True)
+        input_ = (query, 3, 'test_data_out.json', 0.15, True)
         start = time.time()
         output = qlm_search(*input_)
         end = time.time()
@@ -134,4 +135,4 @@ def test_qlm_search():
     print(f'in {i+1} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s')
 
 
-test_qlm_search()
+# test_qlm_search()

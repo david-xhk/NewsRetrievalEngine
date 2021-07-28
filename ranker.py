@@ -241,17 +241,16 @@ test_calculate_idf()
 
 
 def calculate_bm25(
-        query: list[int],
-        docs: list[TokenizedDocument],
-        topk: int = 10,
-        k1: float = 1.2,
-        b: float = 0.75) -> list[tuple]:
+    query: list[int],
+    docs: list[TokenizedDocument],
+    k1: float = 1.2,
+    b: float = 0.75,
+) -> list[tuple]:
     """Return the ids of the top k documents with the highest BM25 retrieval status value for the query.
 
     Arguments:
         query: tokenized query
         docs: list of tokenized documents which contain a word in the query
-        topk: number of results to return
         k1: document frequency scaling factor
         b: document length scaling factor
     Returns:
@@ -278,8 +277,7 @@ def calculate_bm25(
             rsv_d += rsv_td
         rsv[doc.id] = rsv_d
 
-    rank = sorted(rsv.items(), key=lambda kv: kv[1], reverse=True)
-    return rank[:topk]
+    return sorted(rsv.items(), key=lambda kv: kv[1], reverse=True)
 
 
 def test_calculate_bm25():
