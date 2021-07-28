@@ -22,7 +22,7 @@ class BM25Engine():
         # Clean and tokenize the query
         query = [word for word in clean_words(query) if word in self.words]
         if not query:
-            return []
+            return [], []
 
         # Get the ids of all documents with a word in the query
         doc_ids = set(doc_id for word in query

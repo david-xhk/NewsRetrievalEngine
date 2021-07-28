@@ -62,7 +62,7 @@ def main(
         scores.extend(negative_samples)
 
         # Calculate threshold
-        threshold = np.percentile([score[1] for score in scores], q)
+        threshold = np.percentile([score for _, score in scores], q)
 
         # Add to dataset
         datum = {

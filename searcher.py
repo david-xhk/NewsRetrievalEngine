@@ -7,8 +7,8 @@ import json
 
 def bm25_search(
     query: str,
-    topk: int,
     data_path: str,
+    topk: int | None = None,
 ) -> list[tuple[int, int]]:
     """Return the top k document ids and scores using BM25.
 
@@ -53,7 +53,7 @@ def test_bm25_search():
     total_ms = 0
     for i, expected, query in test_data.itertuples():
         print(f'{i+1:2}. {query=}, {expected=}')
-        input_ = (query, 3, 'test_data_out.json')
+        input_ = (query, 'test_data_processed.json', 3)
         start = time.time()
         output = bm25_search(*input_)
         end = time.time()
@@ -120,7 +120,7 @@ def test_qlm_search():
     total_ms = 0
     for i, expected, query in test_data.itertuples():
         print(f'{i+1:2}. {query=}, {expected=}')
-        input_ = (query, 3, 'test_data_out.json', 0.15, True)
+        input_ = (query, 'test_data_processed.json', 3)
         start = time.time()
         output = qlm_search(*input_)
         end = time.time()
