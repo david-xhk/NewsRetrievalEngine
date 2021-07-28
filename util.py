@@ -1,6 +1,9 @@
 import nltk
 import string
 import pandas as pd
+import dataclasses
+import json
+import os
 from doctypes import Document
 
 
@@ -37,27 +40,32 @@ def row_to_doc_adapter(row: pd.Series) -> Document:
                     content=row.content)
 
 
-def get_docs(docs_path: str, docs_type: str) -> pd.DataFrame:
-    reader = getattr(pd, f'read_{docs_type}')
-    df = reader(docs_path)
-    return df
+def read_df(path: str) -> pd.DataFrame:
+    _, ext = os.path.splitext(path)
+    if ext == '.csv':
+        return pd.read_csv(path)
+    elif ext == '.json':
+        return pd.read_json(path)
+    else:
+        err_msg = f"Invalid file extension '{ext}'. Must be '.csv' or '.json'."
+        raise ValueError(err_msg)
 
 
-def read_docs(docs_path: str, docs_type: str) -> list[Document]:
-    df = get_docs(docs_path, docs_type)
+def read_docs(docs_path: str) -> list[Document]:
+    df = read_df(docs_path)
     docs = df.apply(row_to_doc_adapter, axis=1)
     return docs.tolist()
 
 
-def get_doc(docid: int, docs_path: str, docs_type: str) -> Document:
-    df = get_docs(docs_path, docs_type)
-    res = df[df['ID'] == docid]
+def get_doc(doc_id: int, docs_path: str) -> Document:
+    df = read_df(docs_path)
+    res = df[df['ID'] == doc_id]
     if not res.empty:
         return row_to_doc_adapter(res.iloc[0])
 
 
 def test_get_doc():
-    input_ = (315201, 'test_data.csv', 'csv')
+    input_ = (315201, 'test_data.csv')
     expected = 315201
     output = get_doc(*input_)
     assert output.id == expected, 'expected ' + str(
@@ -67,6 +75,13 @@ def test_get_doc():
 test_get_doc()
 
 
-def get_docs_size(docs_path: str, docs_type: str) -> int:
-    df = get_docs(docs_path, docs_type)
+def get_docs_size(docs_path: str) -> int:
+    df = read_df(docs_path)
     return df.memory_usage(deep=True).sum()
+
+
+class DataclassJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)

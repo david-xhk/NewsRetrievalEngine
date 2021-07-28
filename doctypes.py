@@ -1,32 +1,27 @@
-from dataclasses import dataclass, asdict
-import json
+from __future__ import annotations
+from dataclasses import dataclass
 
 
 @dataclass
 class Document:
-    """Class for a document in the corpus."""
+    """Dataclass for a document in the collection."""
     id: int
     title: str
     content: str
 
-    def to_dict(self) -> dict:
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, kvs: dict):
-        return cls(**kvs)
-
-    def to_json(self) -> str:
-        return json.dumps(self.to_dict())
-
-    @classmethod
-    def from_json(cls, json_str: str):
-        return cls.from_dict(json.loads(json_str))
-
 
 @dataclass
 class TokenizedDocument(Document):
-    """Class for a document that has been tokenized."""
+    """Dataclass for a document that has been tokenized."""
     id: int
-    title: list
-    content: list
+    title: list[str] | list[int]  # List of words or word ids
+    content: list[str] | list[int]
+
+
+@dataclass
+class LanguageModel:
+    """Dataclass for a language model."""
+    id: int
+    model: dict[str, int]  # Mapping of words to word counts
+    total: int
+    smoothing_constant: int
