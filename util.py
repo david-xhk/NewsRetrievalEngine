@@ -7,20 +7,21 @@ import os
 from doctypes import Document
 
 
-def clean_words(words: str) -> list[str]:
+def clean_words(words: str, do_stem: bool = True) -> list[str]:
     stemmer = nltk.stem.PorterStemmer()
     stopwords = set(nltk.corpus.stopwords.words('english'))
     punctuation = set(string.punctuation)
-    words_ = []
+    cleaned = []
     for word in nltk.tokenize.word_tokenize(words):
         # removes non-ascii characters
         word = word.encode('ascii', 'ignore').decode()
         if (word and not all(letter in punctuation for letter in word)):
             word = word.lower()
             if word not in stopwords:
-                word = stemmer.stem(word)
-                words_.append(word)
-    return words_
+                if do_stem:
+                    word = stemmer.stem(word)
+                cleaned.append(word)
+    return cleaned
 
 
 def test_clean_words():
