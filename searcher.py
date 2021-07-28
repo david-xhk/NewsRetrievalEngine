@@ -1,130 +1,137 @@
-from time import time_ns
-from doctypes import Document
-from ranker import calculate_bm25, calculate_specific_bm25
+from doctypes import Document, LanguageModel
+from ranker import calculate_bm25, calculate_interpolated_sentence_probability
 from util import clean_words, get_doc
 import json
 
-class BM25Engine():
-    def __init__(self, index_path) -> None:
-        self.index_path = index_path
-        self.items = None
-        self._load_data()
 
-    def _load_data(self):
-        # Load the stored indexer output
-        with open(self.index_path, 'r') as fp:
-            [docs, words, wtoi, index] = json.load(fp)
-        docs = [Document.from_dict(doc) for doc in docs]
-        self.words = words
-        self.wtoi = wtoi
-        self.index = index
-        self.docs_map = {doc.id: doc for doc in docs}
-
-    def _query_processing(self, query):
-        # Clean query
-        query = [word for word in clean_words(query) if word in self.words]
-        if not query:
-            return []
-        
-        # Use the inverted index to retrieve the ids of all documents that contain
-        # a word in the query
-        docs_ = list(set(docid for word in query for docid in self.index[word]))
-
-        # Get the tokenized documents with the ids
-        for i, docid in enumerate(docs_):
-            docs_[i] = self.docs_map[docid]
-        
-        # Convert query to word indices
-        query = [self.wtoi[word] for word in query]
-        return query, docs_
-
-    
-    def get_topk(self, query: str, topk: int):
-        query, docs_ = self._query_processing(query)
-
-        # Call the BM25 algorithm and return the results
-        results = calculate_bm25(query, docs_, topk)
-
-        # Select docid
-        if results:
-            results = [docid for (docid, _) in results]
-
-        return results
-    
-    def calculate_query_doc(self, document_id: int, query):
-        query, docs_ = self._query_processing(query)
-
-        return calculate_specific_bm25(query, document_id, docs_)
-
-
-
-def search(query: str, topk: int, index_path: str) -> list[int]:
-    """Return the ids of the top k documents for the query.
+def bm25_search(
+    query: str,
+    topk: int,
+    data_path: str,
+) -> list[tuple[int, int]]:
+    """Return the top k document ids and scores using BM25.
 
     Arguments:
-        - query: query string
-        - topk: number of results to return
-        - index_path: path to index
+        query: query string
+        topk: number of results to return
+        data_path: path to processed data
     Returns:
-        - list of ranked document ids
+        ranked list of document id-score tuples (best score first)
     """
-    # Load the stored indexer output
-    with open(index_path, 'r') as fp:
-        [docs, words, wtoi, index] = json.load(fp)
-    docs = [Document.from_dict(doc) for doc in docs]
+    # Load the processed data
+    with open(data_path, 'r') as fp:
+        data = json.load(fp)
+    docs = [Document(**doc) for doc in data['docs']]
     docs_map = {doc.id: doc for doc in docs}
+    words = data['words']
+    word_ids = data['word_ids']
+    inverted_index = data['inverted_index']
 
-    # Tokenize, clean and convert the query
+    # Clean and tokenize the query
     query = [word for word in clean_words(query) if word in words]
     if not query:
         return []
 
-    # Use the inverted index to retrieve the ids of all documents that contain
-    # a word in the query
-    docs_ = list(set(docid for word in query for docid in index[word]))
+    # Get the ids of all documents with a word in the query
+    doc_ids = set(doc_id for word in query for doc_id in inverted_index[word])
 
-    # Get the tokenized documents with the ids
-    for i, docid in enumerate(docs_):
-        docs_[i] = docs_map[docid]
+    # Get the respective documents
+    hits = [docs_map[doc_id] for doc_id in doc_ids]
 
-    # Convert query to word indices
-    query = [wtoi[word] for word in query]
+    # Convert query to word ids
+    query = [word_ids[word] for word in query]
 
     # Call the BM25 algorithm and return the results
-    results = calculate_bm25(query, docs_, topk)
-
-    # Select docid
-    if results:
-        results = [docid for (docid, _) in results]
-
-    return results
+    return calculate_bm25(query, hits, topk)
 
 
-def test_search():
+def test_bm25_search():
     import pandas as pd
     import time
-
+    test_data = pd.read_csv('test_queries.csv')
     total_ms = 0
-    n = 0
-
-    for expected, query in pd.read_csv(
-            "test_queries.csv").itertuples(index=False):
-        print(f"{n+1:2}. {query=}, {expected=}")
-        input_ = (query, 3, "test_index.json")
+    for i, expected, query in test_data.itertuples():
+        print(f'{i+1:2}. {query=}, {expected=}')
+        input_ = (query, 3, 'test_index.json')
         start = time.time()
-        output = search(*input_)
+        output = bm25_search(*input_)
         end = time.time()
         time_taken = (end - start) * 1000
-
-        for i, docid in enumerate(output):
-            doc = get_doc(docid, "test_data.csv", "csv")
-            print(f"   {i+1:2}) {doc.id=:7}, {doc.title=}")
-        print(f"    {time_taken=:.0f}ms\n")
+        for j, (doc_id, score) in enumerate(output):
+            doc = get_doc(doc_id, 'test_data.csv')
+            print(f'   {j+1:2}) {doc.id=:7}, {score=:5.2f}, {doc.title=}')
+        print(f'    {time_taken=:.0f}ms\n')
         total_ms += time_taken
-        n += 1
-
-    avg_time_taken = total_ms / n
+    avg_time_taken = total_ms / (i + 1)
     latency = 1000 / avg_time_taken
-    print(f"in {n} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s")
+    print(f'in {i+1} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s')
 
 
+# test_bm25_search()
+
+
+def qlm_search(
+    query: str,
+    topk: int,
+    data_path: str,
+    alpha: int = 0.75,
+    normalize: bool = False,
+) -> list[tuple[int, int]]:
+    """Return the top k document ids and scores using QLM (Query Likelihood Model).
+
+    Arguments:
+        query: query string
+        topk: number of results to return
+        data_path: path to processed data
+        alpha: document-collection interpolation constant
+        normalize: whether to normalize probabilities with log
+    Returns:
+        ranked list of document id-score tuples (best score first)
+    """
+    # Load the processed data
+    with open(data_path, 'r') as fp:
+        data = json.load(fp)
+    words = data['words']
+    models = [LanguageModel(**model) for model in data['language_models']]
+    models_map = {model.id: model for model in models}
+    collection_model = LanguageModel(**data['collection_model'])
+
+    # Clean and tokenize the query
+    query = [word for word in clean_words(query) if word in words]
+    if not query:
+        return []
+
+    # Calculate scores using language models
+    scores = {}
+    for doc_id, model in models_map.items():
+        scores[doc_id] = calculate_interpolated_sentence_probability(
+            model, collection_model, query, alpha, normalize)
+
+    # Rank scores and return top k results
+    rank = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    return rank[:topk]
+
+
+def test_qlm_search():
+    import pandas as pd
+    import time
+    test_data = pd.read_csv('test_queries.csv')
+    total_ms = 0
+    for i, expected, query in test_data.itertuples():
+        print(f'{i+1:2}. {query=}, {expected=}')
+        input_ = (query, 3, 'test_index.json', 0.15, True)
+        start = time.time()
+        output = qlm_search(*input_)
+        end = time.time()
+        time_taken = (end - start) * 1000
+        for j, (doc_id, score) in enumerate(output):
+            doc = get_doc(doc_id, 'test_data.csv')
+            print(f'   {j+1:2}) {doc.id=:7}, {score=}, {doc.title=}')
+        print(f'    {time_taken=:.0f}ms\n')
+        total_ms += time_taken
+    avg_time_taken = total_ms / (i + 1)
+    latency = 1000 / avg_time_taken
+    print(f'in {i+1} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s')
+
+
+test_qlm_search()
