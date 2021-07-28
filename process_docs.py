@@ -150,26 +150,19 @@ def main(
     print('start indexing...')
     start = time.time()
 
-    result = {}
-    result['docs'] = preprocess_docs(docs)
-    result['words'] = get_words(result['docs'])
-    result['word_ids'] = create_word_ids(result['words'])
-    convert_words_to_ids(result['docs'], result['word_ids'])
+    docs = preprocess_docs(docs)
+    words = get_words(docs)
+    word_ids = create_word_ids(words)
+    convert_words_to_ids(docs, word_ids)
+
+    result = {'docs': docs, 'words': words, 'word_ids': word_ids}
     if do_create_inverted_index:
-        result['inverted_index'] = create_inverted_index(
-            result['docs'],
-            result['words'],
-            result['word_ids'],
-        )
+        inverted_index = create_inverted_index(docs, words, word_ids)
+        result['inverted_index'] = inverted_index
     if do_create_language_models:
-        result['language_models'] = create_language_models(
-            result['docs'],
-            result['words'],
-            smoothing_constant,
-        )
-        result['collection_model'] = create_collection_model(
-            result['language_models'],
-        )
+        models = create_language_models(docs, words, smoothing_constant)
+        result['language_models'] = models
+        result['collection_model'] = create_collection_model(models)
 
     end = time.time()
     time_taken = end - start
