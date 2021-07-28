@@ -1,5 +1,7 @@
 from doctypes import Document, TokenizedDocument, LanguageModel
-from util import clean_words, DataclassJSONEncoder
+from util import read_docs, get_docs_size, clean_words, DataclassJSONEncoder
+import json
+import time
 
 
 def preprocess_docs(docs: list[Document]) -> list[TokenizedDocument]:
@@ -100,14 +102,55 @@ def create_inverted_index(
     return index
 
 
+def test_create_inverted_index():
+    input_ = [
+        [
+            TokenizedDocument(id=0, title=[0, 1, 2, 3], content=[]),
+            TokenizedDocument(id=1, title=[4, 3, 1, 2], content=[]),
+            TokenizedDocument(id=2, title=[4, 1, 0, 3], content=[]),
+            TokenizedDocument(id=3, title=[4, 2, 3, 0], content=[]),
+        ],
+        ['a', 'b', 'c', 'd', 'e'],
+        {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4},
+    ]
+    expected = {
+        'a': [0, 2, 3],
+        'b': [0, 1, 2],
+        'c': [0, 1, 3],
+        'd': [0, 1, 2, 3],
+        'e': [1, 2, 3],
+    }
+    output = create_inverted_index(*input_)
+    assert output == expected, f'expected {expected} from create_inverted_index but got {output}'
+
+
+test_create_inverted_index()
+
+
 def main(
-    docs: list[Document],
+    docs_path: str = 'test_data.csv',
+    out_path: str = 'test_data_processed.json',
     do_create_inverted_index: bool = True,
     do_create_language_models: bool = True,
     smoothing_constant: int = 1,
-    **kwargs,
-) -> dict:
-    result = {**kwargs}
+):
+    """Process a collection of documents.
+
+    Arguments:
+        docs_path: path to input file (must be .csv or .json format)
+        out_path: output path (must be .json format)
+        do_create_inverted_index: if set to true, create inverted index
+        do_create_language_models: if set to true, create language models
+        smoothing_constant: smoothing constant for language models (set to 0 for no smoothing)
+    """
+    docs = read_docs(docs_path)
+    docs_size = get_docs_size(docs_path)
+    print(f'read {docs_path} with {len(docs)} rows @ {docs_size/1e6:.1f}MB')
+
+    print('start indexing...')
+    start = time.time()
+
+    result = {}
     result['docs'] = preprocess_docs(docs)
     result['words'] = get_words(result['docs'])
     result['word_ids'] = create_word_ids(result['words'])
@@ -127,107 +170,45 @@ def main(
         result['collection_model'] = create_collection_model(
             result['language_models'],
         )
-    return result
 
-
-def test_main():
-    input_ = [
-        Document(
-            id=0,
-            title='breakthrough drug for schizophrenia',
-            content='',
-        ),
-        Document(
-            id=1,
-            title='new schizophrenia drugs',
-            content='',
-        ),
-        Document(
-            id=2,
-            title='new approach for treatment of schizophrenia',
-            content='',
-        ),
-        Document(
-            id=3,
-            title='new hopes for schizophrenia patients',
-            content='',
-        ),
-    ]
-    expected = {
-        'approach': [2],
-        'breakthrough': [0],
-        'drug': [0, 1],
-        'hope': [3],
-        'new': [1, 2, 3],
-        'patient': [3],
-        'schizophrenia': [0, 1, 2, 3],
-        'treatment': [2],
-    }
-    output = main(input_)['inverted_index']
-    assert output == expected, f'expected {expected} from main but got {output}'
-
-
-test_main()
-
-if __name__ == '__main__':
-    import argparse
-    import json
-    import time
-    from util import read_docs, get_docs_size
-
-    parser = argparse.ArgumentParser(
-        description='Process a collection of documents.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        '-i',
-        '--in',
-        required=True,
-        help='path to input file (must be .csv or .json format)',
-        metavar="PATH",
-        dest='docs_path',
-    )
-    parser.add_argument(
-        '-o',
-        '--out',
-        default='result.json',
-        help='output path',
-        metavar="PATH",
-        dest='out_path',
-    )
-    parser.add_argument(
-        '--inverted-index',
-        action='store_true',
-        help='if specified, create inverted index',
-        dest='do_create_inverted_index',
-    )
-    parser.add_argument(
-        '--language-models',
-        action='store_true',
-        help='if specified, create language models',
-        dest='do_create_language_models',
-    )
-    parser.add_argument(
-        '--smoothing-constant',
-        default=0,
-        type=int,
-        help='smoothing constant for language models (set to 0 for no smoothing)',
-        metavar=">= 0",
-    )
-
-    args = parser.parse_args()
-    docs = read_docs(args.docs_path)
-    docs_size = get_docs_size(args.docs_path)
-    print(f'read {args.docs_path} with {len(docs)} rows @ {docs_size/1e6:.1f}MB')
-
-    print('start indexing...')
-    start = time.time()
-    output = main(docs, **vars(args))
     end = time.time()
     time_taken = end - start
     speed = docs_size / 1e3 / time_taken
     time_taken = f'{time_taken // 60:.0f}m{time_taken % 60:.0f}s'
     print(f'indexing completed in {time_taken} ({speed:.1f}KB/s)')
 
-    with open(args.out_path, 'w') as fp:
-        json.dump(output, fp, cls=DataclassJSONEncoder)
+    with open(out_path, 'w') as fp:
+        json.dump(result, fp, cls=DataclassJSONEncoder)
+    print(f'wrote result to {out_path}')
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Process a collection of documents.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        '-i', '--in', default='test_data.csv',
+        help='path to input file (must be .csv or .json format)',
+        metavar='PATH', dest='docs_path')
+    parser.add_argument(
+        '-o', '--out', default='test_data_processed.json',
+        help='output path (must be .json format)',
+        metavar='PATH', dest='out_path')
+    parser.add_argument(
+        '-j', '--inverted-index', action='store_true',
+        help='if set to true, create inverted index',
+        dest='do_create_inverted_index')
+    parser.add_argument(
+        '-m', '--language-model', action='store_true',
+        help='if set to true, create language models',
+        dest='do_create_language_models')
+    parser.add_argument(
+        '-k', '--smoothing', default=0, type=int,
+        help='smoothing constant for language models (set to 0 for no smoothing)',
+        metavar='K', dest='smoothing_constant')
+
+    args = parser.parse_args()
+    main(**vars(args))
