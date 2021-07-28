@@ -103,23 +103,16 @@ def create_inverted_index(
 
 
 def test_create_inverted_index():
-    input_ = [
-        [
-            TokenizedDocument(id=0, title=[0, 1, 2, 3], content=[]),
-            TokenizedDocument(id=1, title=[4, 3, 1, 2], content=[]),
-            TokenizedDocument(id=2, title=[4, 1, 0, 3], content=[]),
-            TokenizedDocument(id=3, title=[4, 2, 3, 0], content=[]),
-        ],
-        ['a', 'b', 'c', 'd', 'e'],
-        {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4},
-    ]
-    expected = {
-        'a': [0, 2, 3],
-        'b': [0, 1, 2],
-        'c': [0, 1, 3],
-        'd': [0, 1, 2, 3],
-        'e': [1, 2, 3],
-    }
+    input_ = ([TokenizedDocument(id=0, title=[0, 1, 2, 3], content=[]),
+               TokenizedDocument(id=1, title=[4, 3, 1, 2], content=[]),
+               TokenizedDocument(id=2, title=[4, 1, 0, 3], content=[]),
+               TokenizedDocument(id=3, title=[4, 2, 3, 0], content=[])],
+              ['a', 'b', 'c', 'd', 'e'], {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4})
+    expected = {'a': [0, 2, 3],
+                'b': [0, 1, 2],
+                'c': [0, 1, 3],
+                'd': [0, 1, 2, 3],
+                'e': [1, 2, 3]}
     output = create_inverted_index(*input_)
     assert output == expected, f'expected {expected} from create_inverted_index but got {output}'
 

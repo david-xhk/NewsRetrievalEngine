@@ -25,21 +25,9 @@ def calculate_word_probability(
 
 
 def test_calculate_word_probability():
-    input_ = (
-        LanguageModel(
-            id=0,
-            model={
-                'a': 1,
-                'b': 2,
-                'c': 3,
-                'd': 4,
-            },
-            total=15,
-            smoothing_constant=1,
-        ),
-        'e',
-        False,
-    )
+    input_ = (LanguageModel(id=0, total=15, smoothing_constant=1,
+                            model={'a': 1, 'b': 2, 'c': 3, 'd': 4}),
+              'e', False)
     expected = 0.06666666666666667
     output = calculate_word_probability(*input_)
     assert output == expected, f'expected {expected} from calculate_word_probability but got {output}'
@@ -70,21 +58,9 @@ def calculate_sentence_probability(
 
 
 def test_calculate_sentence_probability():
-    input_ = (
-        LanguageModel(
-            id=0,
-            model={
-                'a': 1,
-                'b': 2,
-                'c': 3,
-                'd': 4,
-            },
-            total=15,
-            smoothing_constant=1,
-        ),
-        ['b', 'd', 'e'],
-        False,
-    )
+    input_ = (LanguageModel(id=0, total=15, smoothing_constant=1,
+                            model={'a': 1, 'b': 2, 'c': 3, 'd': 4}),
+              ['b', 'd', 'e'], False)
     expected = 0.0044444444444444444
     output = calculate_sentence_probability(*input_)
     assert output == expected, f'expected {expected} from calculate_sentence_probability but got {output}'
@@ -120,34 +96,11 @@ def calculate_interpolated_sentence_probability(
 
 
 def test_calculate_interpolated_sentence_probability():
-    input_ = (
-        LanguageModel(
-            id=0,
-            model={
-                'a': 1,
-                'b': 2,
-                'c': 3,
-                'd': 4,
-            },
-            total=15,
-            smoothing_constant=1,
-        ),
-        LanguageModel(
-            id=-1,
-            model={
-                'a': 1,
-                'b': 2,
-                'c': 5,
-                'd': 4,
-                'e': 3,
-            },
-            total=25,
-            smoothing_constant=2,
-        ),
-        ['b', 'd', 'e'],
-        0.75,
-        False,
-    )
+    input_ = (LanguageModel(id=0, total=15, smoothing_constant=1,
+                            model={'a': 1, 'b': 2, 'c': 3, 'd': 4}),
+              LanguageModel(id=-1, total=25, smoothing_constant=2,
+                            model={'a': 1, 'b': 2, 'c': 5, 'd': 4, 'e': 3}),
+              ['b', 'd', 'e'], 0.75, False)
     expected = 0.005890000000000001
     output = calculate_interpolated_sentence_probability(*input_)
     assert output == expected, f'expected {expected} from calculate_interpolated_sentence_probability but got {output}'
