@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from collections import Counter
 from dataclasses import dataclass
 
 
@@ -14,14 +16,14 @@ class Document:
 class TokenizedDocument(Document):
     """Dataclass for a document that has been tokenized."""
     id: int
-    title: list[str] | list[int]  # List of words or word ids
-    content: list[str] | list[int]
+    title: list[str | int]  # List of words or word ids
+    content: list[str | int]
 
 
 @dataclass
 class LanguageModel:
     """Dataclass for a language model."""
     id: int
-    model: dict[str, int]  # Mapping of words to word counts
+    counter: Counter[str, int]
     total: int
     smoothing_constant: int
