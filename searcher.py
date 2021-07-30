@@ -1,106 +1,83 @@
 from __future__ import annotations
-from doctypes import Document, LanguageModel
+
+import pickle
+
+import pandas as pd
+import torch
+
 from ranker import calculate_bm25, calculate_interpolated_sentence_probability
-from util import clean_words, get_doc
-import json
+from ranknet_lstm import RankNetLSTM
+from util import (clean_words, convert_itos, doc_pipeline, query_pipeline,
+                  replace_unknown_words)
 
 
 def bm25_search(
     query: str,
-    data_path: str,
+    processed_data_path: str,
     topk: int | None = None,
-) -> list[tuple[int, int]]:
+) -> list[tuple[int, float]]:
     """Return the top k document ids and scores using BM25.
 
     Arguments:
         query: query string
+        processed_data_path: path to load processed data
         topk: number of results to return
-        data_path: path to processed data
     Returns:
         ranked list of document id-score tuples (best score first)
     """
     # Load the processed data
-    with open(data_path, 'r') as fp:
-        data = json.load(fp)
-    docs = [Document(**doc) for doc in data['docs']]
-    docs_map = {doc.id: doc for doc in docs}
-    words = data['words']
-    word_ids = data['word_ids']
+    with open(processed_data_path, 'rb') as fp:
+        data = pickle.load(fp)
+    vocab = data['vocab']
+    docs_map = {}
+    for doc in data['docs']:
+        convert_itos(doc.title, vocab)
+        convert_itos(doc.content, vocab)
+        docs_map[doc.id] = doc
     inverted_index = data['inverted_index']
 
-    # Clean and tokenize the query
-    query = [word for word in clean_words(query) if word in words]
-    if not query:
-        return []
+    # Clean and tokenize the query and replace unknown words
+    query = replace_unknown_words(clean_words(query), vocab)
 
     # Get the ids of all documents with a word in the query
     doc_ids = set(doc_id for word in query for doc_id in inverted_index[word])
 
     # Get the respective documents
     hits = [docs_map[doc_id] for doc_id in doc_ids]
-
-    # Convert query to word ids
-    query = [word_ids[word] for word in query]
+    if not hits:
+        return []
 
     # Call the BM25 algorithm and return the top k results
     return calculate_bm25(query, hits)[:topk]
 
 
-def test_bm25_search():
-    import pandas as pd
-    import time
-    test_data = pd.read_csv('test_queries.csv')
-    total_ms = 0
-    for i, expected, query in test_data.itertuples():
-        print(f'{i+1:2}. {query=}, {expected=}')
-        input_ = (query, 'test_data_processed.json', 3)
-        start = time.time()
-        output = bm25_search(*input_)
-        end = time.time()
-        time_taken = (end - start) * 1000
-        for j, (doc_id, score) in enumerate(output):
-            doc = get_doc(doc_id, 'test_data.csv')
-            print(f'   {j+1:2}) {doc.id=:7}, {score=:5.2f}, {doc.title=}')
-        print(f'    {time_taken=:.0f}ms\n')
-        total_ms += time_taken
-    avg_time_taken = total_ms / (i + 1)
-    latency = 1000 / avg_time_taken
-    print(f'in {i+1} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s')
-
-
-# test_bm25_search()
-
-
 def qlm_search(
     query: str,
-    data_path: str,
+    processed_data_path: str,
     topk: int | None = None,
     alpha: float = 0.75,
     normalize: bool = False,
-) -> list[tuple[int, int]]:
-    """Return the top k document ids and scores using QLM (Query Likelihood Model).
+) -> list[tuple[int, float]]:
+    """Return the top k document ids and scores using query likelihood models.
 
     Arguments:
         query: query string
+        processed_data_path: path to load processed data
         topk: number of results to return
-        data_path: path to processed data
         alpha: document-collection interpolation constant
         normalize: whether to normalize probabilities with log
     Returns:
         ranked list of document id-score tuples (best score first)
     """
     # Load the processed data
-    with open(data_path, 'r') as fp:
-        data = json.load(fp)
-    words = data['words']
-    models = [LanguageModel(**model) for model in data['language_models']]
-    models_map = {model.id: model for model in models}
-    collection_model = LanguageModel(**data['collection_model'])
+    with open(processed_data_path, 'rb') as fp:
+        data = pickle.load(fp)
+    vocab = data['vocab']
+    models_map = {model.id: model for model in data['language_models']}
+    collection_model = data['collection_model']
 
-    # Clean and tokenize the query
-    query = [word for word in clean_words(query) if word in words]
-    if not query:
-        return []
+    # Clean and tokenize the query and replace unknown words
+    query = replace_unknown_words(clean_words(query), vocab)
 
     # Calculate scores using language models
     scores = {}
@@ -113,26 +90,48 @@ def qlm_search(
     return rank[:topk]
 
 
-def test_qlm_search():
-    import pandas as pd
-    import time
-    test_data = pd.read_csv('test_queries.csv')
-    total_ms = 0
-    for i, expected, query in test_data.itertuples():
-        print(f'{i+1:2}. {query=}, {expected=}')
-        input_ = (query, 'test_data_processed.json', 3)
-        start = time.time()
-        output = qlm_search(*input_)
-        end = time.time()
-        time_taken = (end - start) * 1000
-        for j, (doc_id, score) in enumerate(output):
-            doc = get_doc(doc_id, 'test_data.csv')
-            print(f'   {j+1:2}) {doc.id=:7}, {score=}, {doc.title=}')
-        print(f'    {time_taken=:.0f}ms\n')
-        total_ms += time_taken
-    avg_time_taken = total_ms / (i + 1)
-    latency = 1000 / avg_time_taken
-    print(f'in {i+1} queries: {avg_time_taken=:.0f}ms, {latency=:.2f} queries/s')
+def ranknet_lstm_search(
+    query: str,
+    processed_data_path: str,
+    model_path: str,
+    topk: int | None = None,
+    max_query_len: int = 50,
+    max_doc_len: int = 200,
+) -> list[tuple[int, float]]:
+    """Return the top k document ids and scores using RankNetLSTM.
 
+    Arguments:
+        query: query string
+        processed_data_path: path to load processed data
+        model_path: path to load RankNetLSTM model state
+        topk: number of results to return
+        max_query_len: maximum query length
+        max_doc_len: maximum document length
+    Returns:
+        ranked list of document id-score tuples (best score first)
+    """
+    # Load the processed data
+    with open(processed_data_path, 'rb') as fp:
+        data = pickle.load(fp)
+    docs = data['docs']
+    vocab = data['vocab']
 
-# test_qlm_search()
+    # Device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Load the model
+    model = RankNetLSTM(vocab).to(device)
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
+
+    # Calculate scores using model
+    with torch.no_grad():
+        doc = [doc_pipeline(doc, vocab, max_doc_len) for doc in docs]
+        doc = torch.stack(doc).to(device)
+        query = query_pipeline(query, vocab, max_query_len)
+        query = torch.stack([query for _ in doc]).to(device)
+        output = model(query, doc).detach().flatten().tolist()
+        scores = {doc.id: score for doc, score in zip(docs, output)}
+
+    # Rank scores and return top k results
+    return sorted(scores.items(), key=lambda tup: tup[1], reverse=True)[:topk]
