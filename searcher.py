@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+from typing import Literal
 
 import torch
 
@@ -35,7 +36,7 @@ def bm25_search(
     inverted_index = data['inverted_index']
 
     # Process query
-    query = query_pipeline(query, vocab, max_len=None, to='str')
+    query = query_pipeline(query, vocab, length=None, to='str')
 
     # Get the ids of all documents with a word in the query
     doc_ids = set(doc_id for word in query for doc_id in inverted_index[word])
@@ -75,7 +76,7 @@ def qlm_search(
     collection_model = data['collection_model']
 
     # Process query
-    query = query_pipeline(query, vocab, max_len=None, to='str')
+    query = query_pipeline(query, vocab, length=None, to='str')
 
     # Calculate scores using language models
     scores = {}
@@ -93,8 +94,8 @@ def ranknet_lstm_search(
     processed_data_path: str,
     model_path: str,
     topk: int | None = None,
-    max_query_len: int = 50,
-    max_doc_len: int = 200,
+    query_len: int = 50,
+    doc_len: int = 200,
 ) -> list[tuple[int, float]]:
     """Return the top k document ids and scores using RankNetLSTM.
 
@@ -103,8 +104,8 @@ def ranknet_lstm_search(
         processed_data_path: path to load processed data
         model_path: path to load RankNetLSTM model state
         topk: number of results to return
-        max_query_len: maximum query length
-        max_doc_len: maximum document length
+        query_len: query length to trim/pad to
+        doc_len: document length to trim/pad to
     Returns:
         ranked list of document id-score tuples (best score first)
     """
@@ -124,9 +125,9 @@ def ranknet_lstm_search(
 
     # Calculate scores using model
     with torch.no_grad():
-        doc = [doc_pipeline(doc, vocab, max_doc_len) for doc in docs]
+        doc = [doc_pipeline(doc, vocab, doc_len) for doc in docs]
         doc = torch.stack(doc).to(device)
-        query = query_pipeline(query, vocab, max_query_len)
+        query = query_pipeline(query, vocab, query_len)
         query = torch.stack([query for _ in doc]).to(device)
         output = model(query, doc).detach().flatten().tolist()
         scores = {doc.id: score for doc, score in zip(docs, output)}

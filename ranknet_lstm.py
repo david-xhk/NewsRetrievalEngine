@@ -72,8 +72,8 @@ def main(
     labelled_data_path: str = 'files/test_data_labelled.json',
     processed_data_path: str = 'files/test_data_processed.pickle',
     output_path: str = 'files/ranknet_lstm.pt',
-    max_query_len: int = 50,
-    max_doc_len: int = 200,
+    query_len: int = 50,
+    doc_len: int = 200,
     batch_size: int = 128,
     num_epochs: int = 5,
     gamma: float = 1.0,
@@ -85,8 +85,8 @@ def main(
         labelled_data_path: path to load labelled data
         processed_data_path: path to load processed data
         output_path: path to save RankNetLSTM model state
-        max_query_len: maximum query length to trim/pad to
-        max_doc_len: maximum document length to trim/pad to
+        query_len: query length to trim/pad to
+        doc_len: document length to trim/pad to
         batch_size: batch size
         num_epochs: number of training epochs
         gamma: diff factor for rank net loss
@@ -110,10 +110,10 @@ def main(
     def collate_batch(batch):
         collated = []
         for query, relevant_ids, irrelevant_ids in batch:
-            query = query_pipeline(query, vocab, max_query_len)
+            query = query_pipeline(query, vocab, query_len)
             for pos_id, neg_id in product(relevant_ids, irrelevant_ids):
-                pos_doc = doc_pipeline(docs_map[pos_id], vocab, max_doc_len)
-                neg_doc = doc_pipeline(docs_map[neg_id], vocab, max_doc_len)
+                pos_doc = doc_pipeline(docs_map[pos_id], vocab, doc_len)
+                neg_doc = doc_pipeline(docs_map[neg_id], vocab, doc_len)
                 collated.append((query, pos_doc, neg_doc))
 
         # Shuffle samples
@@ -205,12 +205,12 @@ if __name__ == '__main__':
         metavar="PATH", dest='output_path')
     parser.add_argument(
         '-q', '--query-len', default=50, type=int,
-        help='maximum query length to trim/pad to',
-        metavar='Q', dest='max_query_len')
+        help='query length to trim/pad to',
+        metavar='Q', dest='query_len')
     parser.add_argument(
         '-D', '--doc-len', default=200, type=int,
-        help='maximum document length to trim/pad to',
-        metavar='D', dest='max_doc_len')
+        help='document length to trim/pad to',
+        metavar='D', dest='doc_len')
     parser.add_argument(
         '-b', '--batch', default=128, type=int,
         help='batch size',

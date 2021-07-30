@@ -153,14 +153,14 @@ def replace_unknown_words(sentence: list[str], vocab: Vocab) -> list[str]:
 def pad_sentence(
     sentence: list[int],
     vocab: Vocab,
-    max_len: int,
+    length: int,
     trim_end: bool = True,
     pad_end: bool = False,
 ) -> list[int]:
     sentence_len = len(sentence)
-    pad_len = max(max_len - sentence_len, 0)
+    pad_len = max(length - sentence_len, 0)
     padding = [vocab.stoi['<pad>']] * pad_len
-    sentence_len = min(max_len, sentence_len)
+    sentence_len = min(length, sentence_len)
     sentence = sentence[:sentence_len] if trim_end else sentence[-sentence_len:]
     return sentence + padding if pad_end else padding + sentence
 
@@ -168,13 +168,13 @@ def pad_sentence(
 def query_pipeline(
     query: str,
     vocab: Vocab,
-    max_len: int | None,
+    length: int | None,
     to: Literal['tensor', 'str'] = 'tensor',
 ) -> torch.Tensor:
     query = clean_words(query)
     query = convert_stoi(query, vocab)
-    if max_len is not None:
-        query = pad_sentence(query, vocab, max_len, trim_end=False)
+    if length is not None:
+        query = pad_sentence(query, vocab, length, trim_end=False)
     if to == 'tensor':
         return torch.tensor(query, dtype=torch.int64)
     else:
@@ -184,9 +184,9 @@ def query_pipeline(
 def doc_pipeline(
     doc: TokenizedDocument[int],
     vocab: Vocab,
-    max_len: int,
+    length: int,
 ) -> torch.Tensor:
-    doc = pad_sentence(doc.title + doc.content, vocab, max_len, trim_end=True)
+    doc = pad_sentence(doc.title + doc.content, vocab, length, trim_end=True)
     return torch.tensor(doc, dtype=torch.int64)
 
 
