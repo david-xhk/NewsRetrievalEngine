@@ -70,16 +70,46 @@ def test_search(search_fn, *args,
         R = [int(doc_id == expected) for doc_id, _ in output]
         Rs.append(R)
         if verbose:
-            print(f'  {i+1:2}. {query=}, {expected=} ({fmt_secs(time_taken)})')
-            for j, (doc_id, score) in enumerate(output):
-                doc = get_doc(doc_id, raw_data_path)
-                id, title = doc.id, doc.title
-                print(f'    {j+1:2}) {id=:7}, {score=:5.2f}, {title=}')
+            header = {'no.': i + 1,
+                      'query': repr(query),
+                      'expected': repr(expected),
+                      'latency': fmt_secs(time_taken)}
+            print_search_results(output, raw_data_path, 2, header)
     time_taken = sum(total_time)
     MRR = calculate_mean_reciprocal_rank(Rs)
     latency = len(total_time) / time_taken
     print(f'{search_fn.__name__} test complete ({fmt_secs(time_taken)}): '
           f'{i+1} queries, {MRR=:.2f}, {latency=:.2f} queries/s')
+
+
+def print_search_results(
+    results: list[tuple[int, float]],
+    docs_path: str,
+    verbose: int = 0,
+    header: dict | None = None,
+):
+    if verbose > 1:
+        if header is not None:
+            header = ' | '.join(f'{k.title()}: {v}' for k, v in header.items())
+            print('-' * len(header))
+            print(header)
+            print('-' * len(header))
+        a = len(str(len(results)))
+        b = max(len(str(doc_id)) for doc_id, _ in results)
+        c = max(len(f"{score:{'.2e' if score < 0.01 else '.2f'}}")
+                for _, score in results)
+        print(f"n{' '*(a-1)}  id{' '*(b-2)}  score{' '*(c-5)}  title")
+        print(f"={'='*(a-1)}  =={'='*(b-2)}  ====={'='*(c-5)}  =====")
+    for i, (doc_id, score) in enumerate(results):
+        doc = get_doc(doc_id, docs_path)
+        id, title = doc.id, doc.title
+        if verbose > 1:
+            fmt = '.2e' if score < 0.01 else '.2f'
+            print(f'{i+1:<{a}}  {id:<{b}}  {score:<{c}{fmt}}  {title}')
+        elif verbose == 1:
+            print(f"{id}, {score}")
+        else:
+            print(f"{', ' if i > 0 else ''}{id}", end='')
 
 
 def clean_words(words: str) -> list[str]:
