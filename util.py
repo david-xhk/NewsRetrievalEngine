@@ -174,12 +174,6 @@ def convert_itos(sentence: list[int], vocab: Vocab) -> list[str]:
     return sentence
 
 
-def replace_unknown_words(sentence: list[str], vocab: Vocab) -> list[str]:
-    for i, w in enumerate(sentence):
-        sentence[i] = vocab.itos[vocab[w]]
-    return sentence
-
-
 def pad_sentence(
     sentence: list[int],
     vocab: Vocab,
@@ -199,8 +193,8 @@ def query_pipeline(
     query: str,
     vocab: Vocab,
     length: int | None,
-    to: Literal['tensor', 'str'] = 'tensor',
-) -> torch.Tensor:
+    to: Literal['str', 'tensor'] = 'tensor',
+) -> list[str] | torch.Tensor:
     query = clean_words(query)
     query = convert_stoi(query, vocab)
     if length is not None:
