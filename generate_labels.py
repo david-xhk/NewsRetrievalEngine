@@ -1,23 +1,25 @@
-from engine import BM25Engine
-from util import clean_words, read_docs
-import numpy as np
 import json
 import time
 
+import numpy as np
+
+from engine import BM25Engine
+from util import clean_words, read_docs
+
 
 def main(
-    docs_path: str = 'test_data.csv',
-    data_path: str = 'test_data_processed.json',
-    out_path: str = 'test_data_labelled.json',
+    raw_data_path: str = 'files/test_data.csv',
+    processed_data_path: str = 'files/test_data_processed.pickle',
+    output_path: str = 'files/test_data_labelled.json',
     k: int = 4,
     q: int = 80,
 ):
     """Create a pseudo-labelled dataset using BM25.
 
     Arguments:
-        docs_path: path to input file (must be .csv or .json format)
-        data_path: path to data file (must be .json format)
-        out_path: output path (must be .json format)
+        raw_data_path: path to load raw data (must be .csv or .json format)
+        processed_data_path: path to load processed data
+        output_path: path to save output (must be .json format)
         k: number of positive and negative samples to generate
         q: threshold percentile for relevant/irrelevant scores
 
@@ -30,12 +32,12 @@ def main(
             Documents with relevance score below q-th percentile are irrelevant, otherwise relevant \\
             Add (query, relevant_docids, irrelevant_docids) to the dataset
     """
-    docs = read_docs(docs_path)
+    docs = read_docs(raw_data_path)
     num_docs = len(docs)
-    print(f'loaded {docs_path} with {num_docs} docs')
+    print(f'loaded {raw_data_path} with {num_docs} docs')
 
-    engine = BM25Engine(data_path)
-    print(f'loaded {data_path}')
+    engine = BM25Engine(processed_data_path)
+    print(f'loaded {processed_data_path}')
 
     print('start labelling...')
     start_time = time.time()
@@ -50,13 +52,13 @@ def main(
         # Generate query from title
         query = ' '.join(clean_words(doc.title, do_stem=False))
 
-        # Pick top k documents using BM25
+        # Get scores of top k documents using BM25
         positive_samples = engine.rank_topk(query, topk=k)
         for doc_id, _ in positive_samples:
             doc_ids.remove(doc_id)
         scores.extend(positive_samples)
 
-        # Pick k other random documents
+        # Get scores of k other random documents
         doc_ids = np.random.choice(doc_ids, size=k, replace=False).tolist()
         negative_samples = engine.rank(query, doc_ids)
         scores.extend(negative_samples)
@@ -64,16 +66,13 @@ def main(
         # Calculate threshold
         threshold = np.percentile([score for _, score in scores], q)
 
-        # Add to dataset
-        datum = {
-            'query': query,
-            'relevant_docids': [],
-            'irrelevant_docids': [],
-        }
+        # Generate relevant/irrelevant labels
+        relevant, irrelevant = [], []
         for doc_id, score in scores:
-            label = 'relevant' if score > threshold else 'irrelevant'
-            datum[f'{label}_docids'].append(doc_id)
-        dataset.append(datum)
+            (relevant if score > threshold else irrelevant).append(doc_id)
+
+        # Add datum to dataset
+        dataset.append((query, relevant, irrelevant))
 
     end_time = time.time()
     time_taken = end_time - start_time
@@ -81,9 +80,9 @@ def main(
     time_taken = f'{time_taken // 60:.0f}m{time_taken % 60:.0f}s'
     print(f'labelling completed in {time_taken} ({speed:.1f} docs/s)')
 
-    with open(out_path, 'w') as fp:
+    with open(output_path, 'w') as fp:
         json.dump(dataset, fp)
-    print(f'wrote result to {out_path}')
+    print(f'result saved at {output_path}')
 
 
 if __name__ == '__main__':
@@ -94,17 +93,17 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        '-i', '--in', default='test_data.csv',
-        help='path to input file (must be .csv or .json format)',
-        metavar="PATH", dest='docs_path')
+        '-i', '--in', default='files/test_data.csv',
+        help='path to load input data (must be .csv or .json format)',
+        metavar="PATH", dest='raw_data_path')
     parser.add_argument(
-        '-d', '--data', default='test_data_processed.json',
-        help='path to data file (must be .json format)',
-        metavar="PATH", dest='data_path')
+        '-d', '--data', default='files/test_data_processed.pickle',
+        help='path to load processed data',
+        metavar="PATH", dest='processed_data_path')
     parser.add_argument(
-        '-o', '--out', default='test_data_labelled.json',
-        help='output path (must be .json format)',
-        metavar="PATH", dest='out_path')
+        '-o', '--out', default='files/test_data_labelled.json',
+        help='path to save output (must be .json format)',
+        metavar="PATH", dest='output_path')
     parser.add_argument(
         '-k', '--samples', default=5, type=int,
         help='number of positive and negative samples to generate',
