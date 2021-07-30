@@ -119,7 +119,7 @@ def calculate_word_probability(
     Argument:
         model: language model for a document
         word: query word
-        normalize: whether to normalize with log
+        normalize: if set to true, normalize with log
     Returns:
         word probability with the given language model
     """
@@ -140,7 +140,7 @@ def calculate_sentence_probability(
     Argument:
         model: language model for a document
         sentence: list of query words
-        normalize: whether to normalize with log
+        normalize: if set to true, normalize with log
     Returns:
         sentence probability with the given language model
     """
@@ -165,7 +165,7 @@ def calculate_interpolated_sentence_probability(
         colleciton_model: language model for the entire collection
         sentence: list of query words
         alpha: document-collection interpolation constant
-        normalize: whether to normalize with log
+        normalize: if set to true, normalize with log
     Return:
         sentence probability with the given document and collection language models
     """

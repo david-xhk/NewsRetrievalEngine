@@ -64,7 +64,7 @@ def qlm_search(
         processed_data_path: path to load processed data
         topk: number of results to return
         alpha: document-collection interpolation constant
-        normalize: whether to normalize probabilities with log
+        normalize: if set to true, normalize probabilities with log
     Returns:
         ranked list of document id-score tuples (best score first)
     """
