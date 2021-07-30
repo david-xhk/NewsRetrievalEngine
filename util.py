@@ -82,8 +82,7 @@ def test_search(search_fn, *args,
           f'{i+1} queries, {MRR=:.2f}, {latency=:.2f} queries/s')
 
 
-def clean_words(words: str, do_stem: bool = False) -> list[str]:
-    stemmer = nltk.stem.PorterStemmer()
+def clean_words(words: str) -> list[str]:
     stopwords = set(nltk.corpus.stopwords.words('english'))
     punctuation = set(string.punctuation)
     cleaned = []
@@ -93,8 +92,6 @@ def clean_words(words: str, do_stem: bool = False) -> list[str]:
         if (word and not all(letter in punctuation for letter in word)):
             word = word.lower()
             if word not in stopwords:
-                if do_stem:
-                    word = stemmer.stem(word)
                 cleaned.append(word)
     return cleaned
 

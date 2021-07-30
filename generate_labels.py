@@ -50,7 +50,7 @@ def main(
         scores = []
 
         # Generate query from title
-        query = ' '.join(clean_words(doc.title, do_stem=False))
+        query = ' '.join(clean_words(doc.title))
 
         # Get scores of top k documents using BM25
         positive_samples = engine.rank_topk(query, topk=k)
