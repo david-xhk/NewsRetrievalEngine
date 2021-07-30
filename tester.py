@@ -188,7 +188,7 @@ def test_searcher():
                     processed_data_path='files/test_data_processed.pickle',
                     raw_data_path='files/test_data.csv',
                     verbose=False, model_path='files/ranknet_lstm.pt',
-                    topk=10, max_query_len=50, max_doc_len=200)
+                    topk=10, query_len=50, doc_len=200)
     test_ranknet_lstm_search()
 
 
@@ -197,9 +197,8 @@ def test_util():
 
     def test_clean_words():
         test(util.clean_words,
-             ['3', 'kill', 'islam', 'milit', 'attack', 'town'],
-             '3 killed as Islamic militants attack town',
-             True)
+             ['3', 'killed', 'islamic', 'militants', 'attack', 'town'],
+             '3 killed as Islamic militants attack town')
     test_clean_words()
 
     def test_get_doc():
