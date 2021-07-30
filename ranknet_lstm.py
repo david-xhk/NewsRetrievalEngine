@@ -85,8 +85,8 @@ def main(
         labelled_data_path: path to load labelled data
         processed_data_path: path to load processed data
         output_path: path to save RankNetLSTM model state
-        max_query_len: maximum query length to trim/pad
-        max_doc_len: maximum document length to trim/pad
+        max_query_len: maximum query length to trim/pad to
+        max_doc_len: maximum document length to trim/pad to
         batch_size: batch size
         num_epochs: number of training epochs
         gamma: diff factor for rank net loss
@@ -205,11 +205,11 @@ if __name__ == '__main__':
         metavar="PATH", dest='output_path')
     parser.add_argument(
         '-q', '--query-len', default=50, type=int,
-        help='maximum query length to trim/pad',
+        help='maximum query length to trim/pad to',
         metavar='Q', dest='max_query_len')
     parser.add_argument(
         '-D', '--doc-len', default=200, type=int,
-        help='maximum document length to trim/pad',
+        help='maximum document length to trim/pad to',
         metavar='D', dest='max_doc_len')
     parser.add_argument(
         '-b', '--batch', default=128, type=int,
