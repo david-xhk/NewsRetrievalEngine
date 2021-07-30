@@ -1,28 +1,29 @@
-from doctypes import Document
+import pickle
+
 from ranker import calculate_bm25
-from util import clean_words
-import json
+from util import clean_words, convert_itos, replace_unknown_words
 
 
 class BM25Engine():
-    def __init__(self, data_path):
+    def __init__(self, data_path: str):
         self.data_path = data_path
         self._load_data()
 
     def _load_data(self):
         # Load the processed data
-        with open(self.data_path, 'r') as fp:
-            data = json.load(fp)
-        self.docs_map = {doc['id']: Document(**doc) for doc in data['docs']}
-        self.words = data['words']
-        self.word_ids = data['word_ids']
+        with open(self.data_path, 'rb') as fp:
+            data = pickle.load(fp)
+        self.vocab = data['vocab']
+        self.docs_map = {}
+        for doc in data['docs']:
+            convert_itos(doc.title, self.vocab)
+            convert_itos(doc.content, self.vocab)
+            self.docs_map[doc.id] = doc
         self.inverted_index = data['inverted_index']
 
-    def _process_query(self, query):
-        # Clean and tokenize the query
-        query = [word for word in clean_words(query) if word in self.words]
-        if not query:
-            return [], []
+    def _process_query(self, query: str):
+        # Clean and tokenize the query and replace unknown words
+        query = replace_unknown_words(clean_words(query), self.vocab)
 
         # Get the ids of all documents with a word in the query
         doc_ids = set(doc_id for word in query
@@ -31,8 +32,6 @@ class BM25Engine():
         # Get the respective documents
         hits = [self.docs_map[doc_id] for doc_id in doc_ids]
 
-        # Convert query to word indices
-        query = [self.word_ids[word] for word in query]
         return query, hits
 
     def rank_one(self, query: str, doc_id: int) -> float:
