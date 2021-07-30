@@ -5,7 +5,6 @@ import functools
 import json
 import os
 import string
-from time import time
 from timeit import default_timer as timer
 
 import nltk
@@ -14,8 +13,7 @@ import torch
 from torchtext.vocab import Vocab
 
 from doctypes import Document, TokenizedDocument
-from ranker import (calculate_mean_average_precision,
-                    calculate_mean_reciprocal_rank)
+from ranker import calculate_mean_reciprocal_rank
 
 
 def fmt_secs(s: float):
