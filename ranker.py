@@ -1,6 +1,112 @@
-from doctypes import TokenizedDocument, LanguageModel
+from __future__ import annotations
+
 import functools
 import math
+from collections import Counter
+
+from doctypes import LanguageModel, TokenizedDocument
+
+
+def calculate_precision_at_k(R: list, k: int) -> float:
+    """Calculate precision @ K of a ranking.
+
+    Arguments:
+        R: relevance mapping of a ranking (nonzero is relevant)
+        k: position to calculate at
+    Returns:
+        Precision @ K of the ranking
+    """
+    return sum(R[:k]) / k
+
+
+def calculate_average_precision(R: list) -> float:
+    """Calculate average precision of a ranking.
+
+    Arguments:
+        R: relevance mapping of a ranking (nonzero is relevant)
+    Returns:
+        Average precision of the ranking
+    """
+    p = []
+    for i, r in enumerate(R):
+        if r > 0:
+            p.append(calculate_precision_at_k(R, i + 1))
+    return sum(p) / len(p) if p else 0.0
+
+
+def calculate_mean_average_precision(Rs: list[list]) -> float:
+    """Calculate mean average precision of some rankings.
+
+    Arguments:
+        Rs: relevance mappings of some rankings (nonzero is relevant)
+    Returns:
+        Mean average precision of the rankings
+    """
+    p = []
+    for R in Rs:
+        p.append(calculate_average_precision(R))
+    return sum(p) / len(p)
+
+
+def calculate_dcg_at_k(R: list, k: int) -> float:
+    """Calculate discounted cumulative gain @ K of a ranking.
+
+    Arguments:
+        R: relevance mapping of a ranking (nonzero is relevant)
+        k: position to calculate at
+    Returns:
+        DCG @ K of the ranking
+    """
+    p = R[0]
+    for i in range(1, min(len(R), k)):
+        p += R[i] / math.log2(i + 1)
+    return p
+
+
+def calculate_ndcg_at_k(R: list, k: int) -> float:
+    """Calculate normalized DCG @ K of a ranking.
+
+    Args:
+        R: relevance mapping of a ranking (nonzero is relevant)
+        k: position to calculate at
+    Returns:
+        NDCG @ K of the ranking
+    """
+    S = sorted(R, reverse=True)
+    return calculate_dcg_at_k(R, k) / (calculate_dcg_at_k(S, k) or 1e-23)
+
+
+def calculate_mean_reciprocal_rank(Rs: list) -> float:
+    """Calculate mean reciprocal rank of some rankings.
+
+    Arguments:
+        Rs: relevance mappings of some rankings (nonzero is relevant)
+    Returns:
+        Mean reciprocal rank of the rankings
+    """
+    p = []
+    for R in Rs:
+        s = 0.0
+        for i, r in enumerate(R):
+            if r > 0:
+                s = 1 / (i + 1)
+                break
+        p.append(s)
+    return sum(p) / len(p)
+
+
+def calculate_jaccard_similarity(doc1: list, doc2: list) -> float:
+    """Calculate Jaccard similarity score between two documents.
+
+    Arguments:
+        doc1: document 1
+        doc2: document 2
+    Returns:
+        Jaccard similarity score between doc1 and doc2
+    """
+    A = set(doc1)
+    B = set(doc2)
+    return len(A.intersection(B)) / len(A.union(B))
 
 
 def calculate_word_probability(
@@ -17,23 +123,11 @@ def calculate_word_probability(
     Returns:
         word probability with the given language model
     """
-    p = (model.model.get(word, 0) + model.smoothing_constant) / model.total
+    p = (model.counter[word] + model.smoothing_constant) / model.total
     if normalize:
         return math.log(p)
     else:
         return p
-
-
-def test_calculate_word_probability():
-    input_ = (LanguageModel(id=0, total=15, smoothing_constant=1,
-                            model={'a': 1, 'b': 2, 'c': 3, 'd': 4}),
-              'e', False)
-    expected = 0.06666666666666667
-    output = calculate_word_probability(*input_)
-    assert output == expected, f'expected {expected} from calculate_word_probability but got {output}'
-
-
-test_calculate_word_probability()
 
 
 def calculate_sentence_probability(
@@ -55,18 +149,6 @@ def calculate_sentence_probability(
         return functools.reduce(lambda p, w: p + math.log(f(w)), sentence, 0)
     else:
         return functools.reduce(lambda p, w: p * f(w), sentence, 1)
-
-
-def test_calculate_sentence_probability():
-    input_ = (LanguageModel(id=0, total=15, smoothing_constant=1,
-                            model={'a': 1, 'b': 2, 'c': 3, 'd': 4}),
-              ['b', 'd', 'e'], False)
-    expected = 0.0044444444444444444
-    output = calculate_sentence_probability(*input_)
-    assert output == expected, f'expected {expected} from calculate_sentence_probability but got {output}'
-
-
-test_calculate_sentence_probability()
 
 
 def calculate_interpolated_sentence_probability(
@@ -95,21 +177,7 @@ def calculate_interpolated_sentence_probability(
         return functools.reduce(lambda p, w: p * f(w), sentence, 1)
 
 
-def test_calculate_interpolated_sentence_probability():
-    input_ = (LanguageModel(id=0, total=15, smoothing_constant=1,
-                            model={'a': 1, 'b': 2, 'c': 3, 'd': 4}),
-              LanguageModel(id=-1, total=25, smoothing_constant=2,
-                            model={'a': 1, 'b': 2, 'c': 5, 'd': 4, 'e': 3}),
-              ['b', 'd', 'e'], 0.75, False)
-    expected = 0.005890000000000001
-    output = calculate_interpolated_sentence_probability(*input_)
-    assert output == expected, f'expected {expected} from calculate_interpolated_sentence_probability but got {output}'
-
-
-test_calculate_interpolated_sentence_probability()
-
-
-def calculate_tf(doc: TokenizedDocument) -> dict[int, int]:
+def calculate_tf(doc: TokenizedDocument[str]) -> Counter[str, int]:
     """Calculate term frequency for all words in a document.
 
     Argument:
@@ -117,25 +185,10 @@ def calculate_tf(doc: TokenizedDocument) -> dict[int, int]:
     Return:
         dict of words to the number of times they occur in the document
     """
-    tf = {}
-    for i in doc.title + doc.content:
-        if i not in tf:
-            tf[i] = 0
-        tf[i] += 1
-    return tf
+    return Counter(doc.title + doc.content)
 
 
-def test_calculate_tf():
-    input_ = TokenizedDocument(id=0, title=[0, 1, 2, 3], content=[])
-    expected = {0: 1, 1: 1, 2: 1, 3: 1}
-    output = calculate_tf(input_)
-    assert output == expected, f'expected {expected} from calculate_tf but got {output}'
-
-
-test_calculate_tf()
-
-
-def calculate_df(docs: list[TokenizedDocument]) -> dict[int, int]:
+def calculate_df(docs: list[TokenizedDocument[str]]) -> Counter[str, int]:
     """Calculate document frequency for all words in all documents.
 
     Argument:
@@ -143,28 +196,13 @@ def calculate_df(docs: list[TokenizedDocument]) -> dict[int, int]:
     Returns:
         dict of words to the number of documents they appear in
     """
-    df = {}
+    counter = Counter()
     for doc in docs:
-        for i in set(doc.title + doc.content):
-            if i not in df:
-                df[i] = 0
-            df[i] += 1
-    return df
+        counter.update(set(doc.title + doc.content))
+    return counter
 
 
-def test_calculate_df():
-    input_ = [TokenizedDocument(id=0, title=[0, 1, 2], content=[]),
-              TokenizedDocument(id=1, title=[1, 2, 3], content=[]),
-              TokenizedDocument(id=2, title=[2, 3, 4], content=[])]
-    expected = {0: 1, 1: 2, 2: 3, 3: 2, 4: 1}
-    output = calculate_df(input_)
-    assert output == expected, f'expected {expected} from calculate_df but got {output}'
-
-
-test_calculate_df()
-
-
-def calculate_idf(df: dict[int, int], corpus_size: int) -> dict[int, float]:
+def calculate_idf(df: Counter[str, int], corpus_size: int) -> dict[str, float]:
     """Calculate inverse document frequency.
 
     Arguments:
@@ -174,32 +212,18 @@ def calculate_idf(df: dict[int, int], corpus_size: int) -> dict[int, float]:
         dict of words to their inverse document frequencies
     """
     idf = {}
-    for i, freq in df.items():
-        idf[i] = math.log(corpus_size / freq)
+    for word, freq in df.items():
+        idf[word] = math.log(corpus_size / freq)
     return idf
 
 
-def test_calculate_idf():
-    input_ = ({0: 1, 1: 2, 2: 3, 3: 2, 4: 1}, 3)
-    expected = {0: 1.0986122886681098,
-                1: 0.4054651081081644,
-                2: 0.0,
-                3: 0.4054651081081644,
-                4: 1.0986122886681098}
-    output = calculate_idf(*input_)
-    assert output == expected, f'expected {expected} from calculate_idf but got {output}'
-
-
-test_calculate_idf()
-
-
 def calculate_bm25(
-    query: list[int],
-    docs: list[TokenizedDocument],
+    query: list[str],
+    docs: list[TokenizedDocument[str]],
     k1: float = 1.2,
     b: float = 0.75,
-) -> list[tuple]:
-    """Return the ids of the top k documents with the highest BM25 retrieval status value for the query.
+) -> list[tuple[int, float]]:
+    """Return the ids of the top k documents with the highest BM25 scores for the query.
 
     Arguments:
         query: tokenized query
@@ -215,34 +239,19 @@ def calculate_bm25(
     df = calculate_df(docs)
     idf = calculate_idf(df, N)
 
-    rsv = {}  # maps document id to score
+    scores = {}  # maps document id to score
     for doc in docs:
         L_d = len(doc.title + doc.content)
         rsv_d = 0.0
         tf_d = calculate_tf(doc)
-        for i in query:
-            if i not in tf_d:
+        for word in query:
+            if word not in tf_d:
                 continue
-            idf_t = idf[i]
-            tf_td = tf_d[i]
+            idf_t = idf[word]
+            tf_td = tf_d[word]
             rsv_td = idf_t * (((k1 + 1) * tf_td) /
                               ((k1 * ((1 - b) + b * (L_d / L_ave)) + tf_td)))
             rsv_d += rsv_td
-        rsv[doc.id] = rsv_d
+        scores[doc.id] = rsv_d
 
-    return sorted(rsv.items(), key=lambda kv: kv[1], reverse=True)
-
-
-def test_calculate_bm25():
-    input_ = ([1, 2, 4],
-              [TokenizedDocument(id=0, title=[0, 1, 2], content=[]),
-              TokenizedDocument(id=1, title=[1, 2, 3], content=[]),
-              TokenizedDocument(id=2, title=[2, 3, 4], content=[])])
-    expected = [(2, 1.0986122886681098),
-                (0, 0.4054651081081644),
-                (1, 0.4054651081081644)]
-    output = calculate_bm25(*input_)
-    assert output == expected, f'expected {expected} from calculate_bm25 but got {output}'
-
-
-test_calculate_bm25()
+    return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
