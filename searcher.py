@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import pickle
 
-import pandas as pd
 import torch
 
 from ranker import calculate_bm25, calculate_interpolated_sentence_probability
 from ranknet_lstm import RankNetLSTM
-from util import (clean_words, convert_itos, doc_pipeline, query_pipeline,
-                  replace_unknown_words)
+from util import convert_itos, doc_pipeline, query_pipeline
 
 
 def bm25_search(
@@ -36,8 +34,8 @@ def bm25_search(
         docs_map[doc.id] = doc
     inverted_index = data['inverted_index']
 
-    # Clean and tokenize the query and replace unknown words
-    query = replace_unknown_words(clean_words(query), vocab)
+    # Process query
+    query = query_pipeline(query, vocab, max_len=None, to='str')
 
     # Get the ids of all documents with a word in the query
     doc_ids = set(doc_id for word in query for doc_id in inverted_index[word])
@@ -58,7 +56,7 @@ def qlm_search(
     alpha: float = 0.75,
     normalize: bool = False,
 ) -> list[tuple[int, float]]:
-    """Return the top k document ids and scores using query likelihood models.
+    """Return the top k document ids and scores using the query likelihood model.
 
     Arguments:
         query: query string
@@ -76,8 +74,8 @@ def qlm_search(
     models_map = {model.id: model for model in data['language_models']}
     collection_model = data['collection_model']
 
-    # Clean and tokenize the query and replace unknown words
-    query = replace_unknown_words(clean_words(query), vocab)
+    # Process query
+    query = query_pipeline(query, vocab, max_len=None, to='str')
 
     # Calculate scores using language models
     scores = {}
@@ -134,4 +132,4 @@ def ranknet_lstm_search(
         scores = {doc.id: score for doc, score in zip(docs, output)}
 
     # Rank scores and return top k results
-    return sorted(scores.items(), key=lambda tup: tup[1], reverse=True)[:topk]
+    return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:topk]

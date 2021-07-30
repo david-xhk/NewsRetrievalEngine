@@ -6,6 +6,7 @@ import json
 import os
 import string
 from timeit import default_timer as timer
+from typing import Literal
 
 import nltk
 import pandas as pd
@@ -170,12 +171,17 @@ def pad_sentence(
 def query_pipeline(
     query: str,
     vocab: Vocab,
-    max_len: int,
+    max_len: int | None,
+    to: Literal['tensor', 'str'] = 'tensor',
 ) -> torch.Tensor:
-    query = clean_words(query, do_stem=False)
+    query = clean_words(query)
     query = convert_stoi(query, vocab)
-    query = pad_sentence(query, vocab, max_len, trim_end=False)
-    return torch.tensor(query, dtype=torch.int64)
+    if max_len is not None:
+        query = pad_sentence(query, vocab, max_len, trim_end=False)
+    if to == 'tensor':
+        return torch.tensor(query, dtype=torch.int64)
+    else:
+        return convert_itos(query, vocab)
 
 
 def doc_pipeline(
