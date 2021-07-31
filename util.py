@@ -4,6 +4,7 @@ import dataclasses
 import functools
 import json
 import os
+import pickle
 import string
 from timeit import default_timer as timer
 from typing import Literal
@@ -54,7 +55,6 @@ def test(fn, expected, *args, **kwargs):
 
 def test_search(search_fn, *args,
                 test_data_path: str = 'files/test_queries.csv',
-                processed_data_path: str = 'files/test_data_processed.pickle',
                 raw_data_path: str = 'files/test_data.csv',
                 verbose: bool = False,
                 **kwargs):
@@ -64,7 +64,7 @@ def test_search(search_fn, *args,
     if verbose:
         print(f'{search_fn.__name__} test start')
     for i, expected, query in df.itertuples():
-        args_ = (query, processed_data_path) + args
+        args_ = (query, ) + args
         output, time_taken = timed(search_fn, args_, kwargs)
         total_time.append(time_taken)
         R = [int(doc_id == expected) for doc_id, _ in output]
@@ -96,7 +96,7 @@ def print_search_results(
             print('-' * len(header))
         a = len(str(len(results)))
         b = max(len(str(doc_id)) for doc_id, _ in results)
-        c = max(len(f"{score:{'.2e' if score < 0.01 else '.2f'}}")
+        c = max(len(f"{score:{'.2e' if abs(score) < 0.01 else '.2f'}}")
                 for _, score in results)
         print(f"n{' '*(a-1)}  id{' '*(b-2)}  score{' '*(c-5)}  title")
         print(f"={'='*(a-1)}  =={'='*(b-2)}  ====={'='*(c-5)}  =====")
@@ -104,8 +104,8 @@ def print_search_results(
         doc = get_doc(doc_id, docs_path)
         id, title = doc.id, doc.title
         if verbose > 1:
-            fmt = '.2e' if score < 0.01 else '.2f'
-            print(f'{i+1:<{a}}  {id:<{b}}  {score:<{c}{fmt}}  {title}')
+            fmt = '.2e' if abs(score) < 0.01 else '.2f'
+            print(f'{i+1:<{a}}  {id:<{b}}  {score:< {c}{fmt}}  {title}')
         elif verbose == 1:
             print(f"{id}, {score}")
         else:
@@ -126,10 +126,21 @@ def clean_words(words: str) -> list[str]:
     return cleaned
 
 
-def row_to_doc_adapter(row: pd.Series) -> Document:
-    return Document(id=row.ID,
-                    title=row.title,
-                    content=row.content)
+def save_processed_data(data: dict, path: str):
+    with open(path, 'wb') as fp:
+        pickle.dump(data, fp)
+
+
+@functools.lru_cache
+def load_processed_data(path: str, convert_to_string: bool = False) -> dict:
+    with open(path, 'rb') as fp:
+        data = pickle.load(fp)
+        if convert_to_string:
+            vocab = data['vocab']
+            for doc in data['docs']:
+                convert_itos(doc.title, vocab)
+                convert_itos(doc.content, vocab)
+    return data
 
 
 @functools.lru_cache
@@ -142,6 +153,12 @@ def read_df(path: str) -> pd.DataFrame:
     else:
         err_msg = f"Invalid file extension '{ext}'. Must be '.csv' or '.json'."
         raise ValueError(err_msg)
+
+
+def row_to_doc_adapter(row: pd.Series) -> Document:
+    return Document(id=row.ID,
+                    title=row.title,
+                    content=row.content)
 
 
 def read_docs(docs_path: str) -> list[Document]:
