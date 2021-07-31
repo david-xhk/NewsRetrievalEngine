@@ -4,10 +4,10 @@
 
 # Tasks
 
-- [ ] (Lucas) Create labelled dataset using the pseudocode (refer to week 10 slides, slide 60)
-- [ ] (HK) Integrate week 9 lab with the labelled dataset and evaluate results 
-- [ ] (Jisa) Integrate week 10 lab with the labelled dataset (split into train, val, and test) and evaluate results
-- [ ] (HK) Train a BERT-based model with the labelled dataset (split into train, val, and test) and evaluate results
+- [x] (Lucas) Create labelled dataset using the pseudocode (refer to week 10 slides, slide 60)
+- [x] (HK) Integrate week 9 lab with the labelled dataset and evaluate results 
+- [x] (Jisa) Integrate week 10 lab with the labelled dataset (split into train, val, and test) and evaluate results
+- [x] (HK) Train a BERT-based model with the labelled dataset (split into train, val, and test) and evaluate results
 - [ ] (Lucas) Write a simple UI for the search engine
 - [ ] (Everyone) Write the report
 
