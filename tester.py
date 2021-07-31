@@ -143,28 +143,42 @@ def test_searcher():
 
     def test_bm25_search():
         test_search(searcher.bm25_search,
+                    'files/test_data_processed.pickle', 3,
                     test_data_path='files/test_queries.csv',
-                    processed_data_path='files/test_data_processed.pickle',
                     raw_data_path='files/test_data.csv',
-                    verbose=False, topk=10)
+                    verbose=False)
     test_bm25_search()
 
     def test_qlm_search():
         test_search(searcher.qlm_search,
+                    'files/test_data_processed.pickle', 3,
                     test_data_path='files/test_queries.csv',
-                    processed_data_path='files/test_data_processed.pickle',
                     raw_data_path='files/test_data.csv',
-                    verbose=False, topk=10)
+                    verbose=False)
     test_qlm_search()
 
     def test_ranknet_lstm_search():
         test_search(searcher.ranknet_lstm_search,
+                    'files/test_data_processed.pickle',
+                    'files/ranknet_lstm.pt', 3, 50, 200,
                     test_data_path='files/test_queries.csv',
-                    processed_data_path='files/test_data_processed.pickle',
                     raw_data_path='files/test_data.csv',
-                    verbose=False, model_path='files/ranknet_lstm.pt',
-                    topk=10, query_len=50, doc_len=200)
+                    verbose=False)
     test_ranknet_lstm_search()
+
+    def test_dpr_search():
+        test_search(searcher.dpr_search,
+                    'files/test_data.csv', 3,
+                    test_data_path='files/test_queries.csv',
+                    raw_data_path='files/test_data.csv', verbose=False)
+    test_dpr_search()
+
+    def test_minilm_search():
+        test_search(searcher.minilm_search,
+                    'files/test_data.csv', 3,
+                    test_data_path='files/test_queries.csv',
+                    raw_data_path='files/test_data.csv', verbose=False)
+    test_minilm_search()
 
 
 def test_util():
@@ -226,7 +240,7 @@ def test_util():
 
 
 if __name__ == '__main__':
-    test_process_docs()
-    test_ranker()
+    # test_process_docs()
+    # test_ranker()
     test_searcher()
-    test_util()
+    # test_util()
