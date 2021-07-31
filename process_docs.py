@@ -110,8 +110,7 @@ def main(
     time_taken = f'{time_taken // 60:.0f}m{time_taken % 60:.0f}s'
     print(f'indexing completed in {time_taken} ({speed:.1f}KB/s)')
 
-    with open(output_path, 'wb') as fp:
-        pickle.dump(result, fp)
+    save_processed_data(result, output_path)
     print(f'result saved at {output_path}')
 
 
