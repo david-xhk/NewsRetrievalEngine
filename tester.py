@@ -242,7 +242,7 @@ def test_util():
 
 
 if __name__ == '__main__':
-    # test_process_docs()
-    # test_ranker()
-    # test_searcher()
+    test_process_docs()
+    test_ranker()
+    test_searcher()
     test_util()
