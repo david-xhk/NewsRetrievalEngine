@@ -49,7 +49,7 @@ def test(fn, expected, *args, **kwargs):
     output, time_taken = timed(fn, args, kwargs)
     if callable(expected):
         output, expected = expected(output)
-    assert output == expected, f'expected {expected} from {fn.__name__} but got {output}'
+    assert output == expected, f'expected {repr(expected)} from {fn.__name__} but got {repr(output)}'
     print(f'{fn.__name__} test passed ({fmt_secs(time_taken)})')
 
 
@@ -209,12 +209,12 @@ def pad_sentence(
 def query_pipeline(
     query: str,
     vocab: Vocab,
-    length: int | None,
+    length: int = 0,
     to: Literal['str', 'tensor'] = 'tensor',
 ) -> list[str] | torch.Tensor:
     query = clean_words(query)
     query = convert_stoi(query, vocab)
-    if length is not None:
+    if length:
         query = pad_sentence(query, vocab, length, trim_end=False)
     if to == 'tensor':
         return torch.tensor(query, dtype=torch.int64)
@@ -223,11 +223,26 @@ def query_pipeline(
 
 
 def doc_pipeline(
+    doc: Document,
+    sep: str = '[SEP]',
+) -> torch.Tensor:
+    title, content, doc = doc.title, doc.content, []
+    doc.extend(clean_words(title))
+    if sep:
+        doc.append(sep)
+    doc.extend(clean_words(content))
+    doc = ' '.join(doc)
+    return doc
+
+
+def tokenized_doc_pipeline(
     doc: TokenizedDocument[int],
     vocab: Vocab,
-    length: int,
+    length: int = 0,
 ) -> torch.Tensor:
-    doc = pad_sentence(doc.title + doc.content, vocab, length, trim_end=True)
+    doc = doc.title + doc.content
+    if length:
+        doc = pad_sentence(doc, vocab, length, trim_end=True)
     return torch.tensor(doc, dtype=torch.int64)
 
 
