@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import pickle
 import time
 from collections import Counter
 
 from torchtext.vocab import Vocab
 
 from doctypes import Document, LanguageModel, TokenizedDocument
-from util import clean_words, convert_stoi, get_docs_size, read_docs
+from util import clean_words, convert_stoi, get_docs_size, read_docs, save_processed_data
 
 
 def preprocess_docs(docs: list[Document]) -> list[TokenizedDocument[str]]:

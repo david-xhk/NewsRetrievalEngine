@@ -11,7 +11,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vocab
 
-from util import doc_pipeline, query_pipeline
+from util import doc_pipeline, query_pipeline, load_processed_data
 
 
 class RankNetLSTM(nn.Module):
@@ -95,8 +95,7 @@ def main(
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Load data
-    with open(processed_data_path, 'rb') as fp:
-        data = pickle.load(fp)
+    data = load_processed_data(processed_data_path)
     vocab = data['vocab']
     docs_map = {doc.id: doc for doc in data['docs']}
     with open(labelled_data_path, 'r') as fp:
