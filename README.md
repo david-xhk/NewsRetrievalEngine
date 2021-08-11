@@ -8,8 +8,7 @@
 - [x] (HK) Integrate week 9 lab with the labelled dataset and evaluate results 
 - [x] (Jisa) Integrate week 10 lab with the labelled dataset (split into train, val, and test) and evaluate results
 - [x] (HK) Train a BERT-based model with the labelled dataset (split into train, val, and test) and evaluate results
-- ~~[ ] (Lucas) Write a simple UI for the search engine~~
-- [ ] (Everyone) Write the report
+- [x] (Everyone) Write the report
 
 # Approach
 
