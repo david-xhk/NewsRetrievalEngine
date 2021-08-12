@@ -90,7 +90,7 @@ def qlm_search(
     return scores[:topk]
 
 
-@ functools.lru_cache(maxsize=1)
+@functools.lru_cache(maxsize=1)
 def init_ranknet_lstm_search(
     processed_data_path: str = 'files/test_data_processed.pickle',
     model_path: str = 'files/ranknet_lstm.pt',
@@ -161,7 +161,7 @@ def ranknet_lstm_search(
     return scores[:topk]
 
 
-@ functools.lru_cache(maxsize=1)
+@functools.lru_cache(maxsize=1)
 def init_sbert_search(raw_data_path: str = 'files/test_data.csv'):
     docs = read_docs(raw_data_path)
 
@@ -232,7 +232,7 @@ def sbert_search(
     return scores[:topk]
 
 
-@ functools.lru_cache(maxsize=1)
+@functools.lru_cache(maxsize=1)
 def init_dpr_search(raw_data_path: str = 'files/test_data.csv'):
     docs = read_docs(raw_data_path)
 
